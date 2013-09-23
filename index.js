@@ -16,10 +16,6 @@ module.exports = function(details) {
     channels: [details.channel]
   });
   
-  irc.on('error', function(err) {
-    console.log('IRC error: ', err);
-  });
-  
   var steam = new Steam.SteamClient();
   steam.logOn({
     accountName: details.username,
@@ -60,10 +56,9 @@ module.exports = function(details) {
             steam[triggers[parts[1]]](details.chatroom, steamID);
           });
         });
-      } else if (message.trim() == '.userlist') {
-        Object.keys(steam.chatRooms[details.chatroom]).forEach(function(steamID) {
-          irc.notice(from, steam.users[steamID].playerName + ' http://steamcommunity.com/profiles/' + steamID);
-        });
+      } else if (message.trim() == '!lu' || message.trim() == '~lu') {
+        response = "Current Users: " + Object.keys(steam.chatRooms[details.chatroom]).map(function(steamid){return steam.users[steamid].playerName;}).join(', ');
+        irc.say(details.channel, response)
       }
     });
     
@@ -100,6 +95,14 @@ module.exports = function(details) {
     irc.on('quit', function(nick, reason) {
       steam.sendMessage(details.chatroom, nick + ' has quit (' + reason + ')');
     });
+
+    irc.on('nick', function(oldnick, newnick, channels, message) { 
+      steam.sendMessage(details.chatroom, oldnick + " is now known as " + newnick); 
+    });
+
+    irc.on('error', function(err) {
+      console.log('IRC error: ', err);
+    });
   });
   
   steam.on('chatMsg', function(chatRoom, message, msgType, chatter) {
@@ -124,18 +127,18 @@ module.exports = function(details) {
     } else if (parts[0] == '.unban' && permissions & Steam.EChatPermission.Ban) {
       irc.send('MODE', details.channel, '-b', parts[1]);
       
-    } else if (parts[0] == '.userlist') {
+    } else if (parts[0] == '!lu' || parts[0] == '~lu') {
       irc.send('NAMES', details.channel);
       irc.once('names' + details.channel, function(nicks) {
-        steam.sendMessage(chatter, 'Users in ' + details.channel + ':\n' + Object.keys(nicks).map(function(key) {
+        steam.sendMessage(details.chatroom, 'Users in ' + details.channel + ': ' + Object.keys(nicks).map(function(key) {
           return nicks[key] + key;
-        }).join('\n'));
+        }).join(', '));
       });
     }
   });
   
   steam.on('chatStateChange', function(stateChange, chatterActedOn, chat, chatterActedBy) {
-    var name = steam.users[chatterActedOn].playerName + ' (http://steamcommunity.com/profiles/' + chatterActedOn + ')';
+    var name = steam.users[chatterActedOn].playerName;
     switch (stateChange) {
       case Steam.EChatMemberStateChange.Entered:
         irc.say(details.channel, name + ' entered chat.');
@@ -154,13 +157,31 @@ module.exports = function(details) {
     }
   });
   
+  steam.on('user', function(user) {
+    if (user.friendid in steam.users && steam.chatRooms[details.chatroom] != undefined)
+      if (user.friendid in steam.chatRooms[details.chatroom])
+        if (steam.users[user.friendid].playerName != user.playerName && steam.users[user.friendid].playerName != '' && user.playerName != '')
+          irc.say(details.channel, steam.users[user.friendid].playerName + ' is now known as ' + user.playerName);
+  });
+  
   steam.on('loggedOff', function(result) {
     console.log("Logged off:", result);
+    console.log("Removing Event Listeners");
+    irc.removeAllListeners('message' + details.channel);
+    irc.removeAllListeners('action');
+    irc.removeAllListeners('+mode');
+    irc.removeAllListeners('-mode');
+    irc.removeAllListeners('kick' + details.channel);
+    irc.removeAllListeners('join' + details.channel);
+    irc.removeAllListeners('part' + details.channel);
+    irc.removeAllListeners('quit');
+    irc.removeAllListeners('nick');
+    irc.removeAllListeners('error');
   });
   
   steam.on('sentry', function(data) {
-    require('fs').writeFileSync('sentry', data);
-  })
+    require('fs').writeFileSync('sentry', data)
+;  })
   
   steam.on('debug', console.log);
 };
