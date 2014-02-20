@@ -46,7 +46,7 @@ module.exports = function(details) {
       {
         console.log("joining bots")
         for (user in steam.chatRooms[details.chatroom]) {
-          if(user != '76561198093596874')
+          if(user != steam.steamID)
             joinUser(user);
         }
         botsJoined = true;
