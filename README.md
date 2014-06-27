@@ -32,3 +32,5 @@ There's no API, just a function that does everything.
 You can use '.k', '.kb' and '.unban' commands to kick, (kick)ban and unban across Steam and IRC. The command won't trigger if the user doesn't have ops (for IRC->Steam) or the appropriate chat room permission (for Steam->IRC).
 
 Use '.userlist' in either Steam or IRC to get a list of users on the other side.
+
+This version requires a slightly modified irc library to support WebIRC login. I will create a fork of the IRC library with the changes when I have the time.
