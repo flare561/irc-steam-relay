@@ -41,7 +41,7 @@ module.exports = function(details) {
     newNick = "";
     for (character in originalNick) {
       if (newNick.length == 0) {
-        if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-\\{}[]^`| ".indexOf(originalNick[character]) != -1)
+        if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_\\{}[]^`| ".indexOf(originalNick[character]) != -1)
           newNick += originalNick[character]
       }
       else {
