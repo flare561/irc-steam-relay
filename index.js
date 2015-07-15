@@ -1,6 +1,11 @@
 var Steam = require('steam');
 var fs = require('fs');
 
+var steamIRCBots = {};
+
+//this will not persist, but it is a convenience if needed.
+var bannedChatters = {};
+
 // if we've saved a server list, use it
 if (fs.existsSync('servers')) {
   Steam.servers = JSON.parse(fs.readFileSync('servers'));
@@ -41,7 +46,7 @@ module.exports = function(details) {
     newNick = "";
     for (character in originalNick) {
       if (newNick.length == 0) {
-        if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_\\{}[]^`| ".indexOf(originalNick[character]) != -1)
+        if ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".indexOf(originalNick[character]) != -1)
           newNick += originalNick[character]
       }
       else {
@@ -55,11 +60,6 @@ module.exports = function(details) {
     else
       return "SteamUser";
   }
-  
-  var steamIRCBots = {};
-
-  //this will not persist, but it is a convenience if needed.
-  var bannedChatters = {};
 
   //Technically, this still isn't threadsafe in any way, but it seems to work better than any other method.
   function joinSteamBots()
@@ -83,14 +83,17 @@ module.exports = function(details) {
   }
 
   function joinUser(user) {
+    debugger;
     steamIRCBots[user] = new (require('irc')).Client(details.server, createValidNick(steam.users[user].playerName) + details.suffix, {
                                       userName: "SteamBot", realName: 'http://steamcommunity.com/profiles/' + user + ' ' + steam.users[user].playerName,
                                       webIrc: true, webIrcHost: user, webIrcPassword: details.webircpassword, webIrcUser: "Steambot", webIrcIp: "127.0.0.1"
                                     });
     steamIRCBots[user].once('registered', function(message) {this.send("MODE", this.nick, "-x"); this.join(details.channel) });
     steamIRCBots[user].on('error', function(err) {
+      debugger;
         console.log('IRC error: ', err);
       });
+    debugger;
   
   }
 
@@ -103,15 +106,18 @@ module.exports = function(details) {
       steamIRCBots[user].say(details.channel, msg);
     }
     else {
+      debugger;
       irc.say(details.channel, '<' + steam.users[user].playerName + '> ' + msg);
     }
   }
 
   function steamUserInBots(user) {
+    debugger;
     return Object.keys(steamIRCBots).map(function(key) { return (this[key].nick).toLowerCase();}, steamIRCBots).indexOf(user.toLowerCase()) != -1;
   }
 
   function getSteamUserByNick(nick) {
+    debugger;
     return Object.keys(steamIRCBots)[Object.keys(steamIRCBots).map(function(key) { return (this[key].nick).toLowerCase();}, steamIRCBots).indexOf(nick.toLowerCase())];
   }
 
@@ -186,6 +192,7 @@ module.exports = function(details) {
   });
   
   irc.on('quit', function(nick, reason) {
+    debugger;
     if (!steamUserInBots(nick))
       sendMessage(nick + ' has quit (' + reason + ')');
     else 
@@ -240,6 +247,7 @@ module.exports = function(details) {
         sendMessage(channel.topic)
       }
     } else if (parts[0] == '/me') {
+      debugger;
       if (Object.keys(steamIRCBots).indexOf(chatter) != -1) {
         steamIRCBots[chatter].action(details.channel, message.slice(4));
       }
@@ -252,6 +260,7 @@ module.exports = function(details) {
   });
   
   steam.on('chatStateChange', function(stateChange, chatterActedOn, chat, chatterActedBy) {
+    debugger;
     var name = steam.users[chatterActedOn].playerName;
     switch (stateChange) {
       case Steam.EChatMemberStateChange.Entered:
@@ -285,11 +294,13 @@ module.exports = function(details) {
       if (user.friendid in steam.chatRooms[details.chatroom])
         if (steam.users[user.friendid].playerName != user.playerName && steam.users[user.friendid].playerName != '' && user.playerName != '')
         {
+          debugger;
           steamIRCBots[user.friendid].send("NICK", createValidNick(user.playerName) + details.suffix);
         }
   });
   
   steam.on('loggedOff', function(result) {
+    debugger;
     console.log("Logged off:", result);
     for (user in steamIRCBots) {
       steamIRCBots[user].disconnect("Steam seems down");
