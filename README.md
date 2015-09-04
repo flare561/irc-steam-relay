@@ -6,7 +6,7 @@ Relays messages between a Steam chat room and an IRC channel using [node-irc](ht
 Installation
 -------------
 
-    npm install git://github.com/seishun/irc-steam-relay.git
+    npm install git://github.com/flare561/irc-steam-relay.git#NonWebIrc
 
 Usage
 -----
