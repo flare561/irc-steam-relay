@@ -1,11 +1,6 @@
 var Steam = require('steam');
 var fs = require('fs');
 
-var steamIRCBots = {};
-
-//this will not persist, but it is a convenience if needed.
-var bannedChatters = {};
-
 // if we've saved a server list, use it
 if (fs.existsSync('servers')) {
   Steam.servers = JSON.parse(fs.readFileSync('servers'));
@@ -60,6 +55,11 @@ module.exports = function(details) {
     else
       return "SteamUser";
   }
+  
+  var steamIRCBots = {};
+
+  //this will not persist, but it is a convenience if needed.
+  var bannedChatters = {};
 
   //Technically, this still isn't threadsafe in any way, but it seems to work better than any other method.
   function joinSteamBots()
@@ -85,15 +85,12 @@ module.exports = function(details) {
   function joinUser(user) {
     debugger;
     steamIRCBots[user] = new (require('irc')).Client(details.server, createValidNick(steam.users[user].playerName) + details.suffix, {
-                                      userName: "SteamBot", realName: 'http://steamcommunity.com/profiles/' + user + ' ' + steam.users[user].playerName,
-                                      webIrc: true, webIrcHost: user, webIrcPassword: details.webircpassword, webIrcUser: "Steambot", webIrcIp: "127.0.0.1"
+                                      userName: user.toString(36), realName: 'http://steamcommunity.com/profiles/' + user + ' ' + steam.users[user].playerName
                                     });
-    steamIRCBots[user].once('registered', function(message) {this.send("MODE", this.nick, "-x"); this.join(details.channel) });
+    debugger;
     steamIRCBots[user].on('error', function(err) {
-      debugger;
         console.log('IRC error: ', err);
       });
-    debugger;
   
   }
 
@@ -102,22 +99,20 @@ module.exports = function(details) {
   }
 
   function sendIRCMessage(user, msg) {
+    debugger;
     if (Object.keys(steamIRCBots).indexOf(user) != -1) {
       steamIRCBots[user].say(details.channel, msg);
     }
     else {
-      debugger;
       irc.say(details.channel, '<' + steam.users[user].playerName + '> ' + msg);
     }
   }
 
   function steamUserInBots(user) {
-    debugger;
     return Object.keys(steamIRCBots).map(function(key) { return (this[key].nick).toLowerCase();}, steamIRCBots).indexOf(user.toLowerCase()) != -1;
   }
 
   function getSteamUserByNick(nick) {
-    debugger;
     return Object.keys(steamIRCBots)[Object.keys(steamIRCBots).map(function(key) { return (this[key].nick).toLowerCase();}, steamIRCBots).indexOf(nick.toLowerCase())];
   }
 
@@ -148,9 +143,9 @@ module.exports = function(details) {
         console.log('Banning ' + mask[1].toLowerCase() + ' (' + getSteamUserByNick(mask[1]) + ') from chatroom');
         steam.ban(details.chatroom, getSteamUserByNick(mask[1]));
       }
-      else if (Object.keys(steam.users).indexOf(mask[3]) != -1) {
-        console.log('Banning ' + steamIRCBots[mask[3]].nick + ' (' + mask[3] + ') from chatroom');
-        steam.ban(details.chatroom, mask[3]);
+      else if (Object.keys(steam.users).indexOf(parseInt(mask[2], 36)) != -1) {
+        console.log('Banning ' + steamIRCBots[parseInt(mask[2], 36)].nick + ' (' + parseInt(mask[2], 36) + ') from chatroom');
+        steam.ban(details.chatroom, parseInt(mask[2], 36));
       }
     }
   });
@@ -164,10 +159,10 @@ module.exports = function(details) {
         steam.unban(details.chatroom, bannedChatters[mask[1].toLowerCase()]);
         delete bannedChatters[mask[1].toLowerCase()];
       }
-      else if (Object.keys(steam.users).indexOf(mask[3]) != -1) {
-        key = getKeyByValue(bannedChatters, mask[3]);
-        console.log('Unbanning ' + key + ' (' + mask[3] + ') from chatroom');
-        steam.unban(details.chatroom, mask[3]);
+      else if (Object.keys(steam.users).indexOf(parseInt(mask[2], 36)) != -1) {
+        key = getKeyByValue(bannedChatters, parseInt(mask[2], 36));
+        console.log('Unbanning ' + key + ' (' + parseInt(mask[2], 36) + ') from chatroom');
+        steam.unban(details.chatroom, parseInt(mask[2], 36));
         delete bannedChatters[key];
       }
     }
@@ -192,7 +187,6 @@ module.exports = function(details) {
   });
   
   irc.on('quit', function(nick, reason) {
-    debugger;
     if (!steamUserInBots(nick))
       sendMessage(nick + ' has quit (' + reason + ')');
     else 
@@ -247,7 +241,6 @@ module.exports = function(details) {
         sendMessage(channel.topic)
       }
     } else if (parts[0] == '/me') {
-      debugger;
       if (Object.keys(steamIRCBots).indexOf(chatter) != -1) {
         steamIRCBots[chatter].action(details.channel, message.slice(4));
       }
@@ -260,7 +253,6 @@ module.exports = function(details) {
   });
   
   steam.on('chatStateChange', function(stateChange, chatterActedOn, chat, chatterActedBy) {
-    debugger;
     var name = steam.users[chatterActedOn].playerName;
     switch (stateChange) {
       case Steam.EChatMemberStateChange.Entered:
@@ -294,13 +286,11 @@ module.exports = function(details) {
       if (user.friendid in steam.chatRooms[details.chatroom])
         if (steam.users[user.friendid].playerName != user.playerName && steam.users[user.friendid].playerName != '' && user.playerName != '')
         {
-          debugger;
           steamIRCBots[user.friendid].send("NICK", createValidNick(user.playerName) + details.suffix);
         }
   });
   
   steam.on('loggedOff', function(result) {
-    debugger;
     console.log("Logged off:", result);
     for (user in steamIRCBots) {
       steamIRCBots[user].disconnect("Steam seems down");
