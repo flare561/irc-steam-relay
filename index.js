@@ -19,6 +19,7 @@ module.exports = function(details) {
   var botsJoined = false;
 
   function sendMessage(msg) {
+    debugger;
     if (steam.loggedOn) {
       regex="[\\x02\\x1F\\x0F\\x16]|\\x03(\\d\\d?(,\\d\\d?)?)?";
       message = msg.replace(new RegExp(regex, 'g'), "");
@@ -83,11 +84,10 @@ module.exports = function(details) {
   }
 
   function joinUser(user) {
-    debugger;
     steamIRCBots[user] = new (require('irc')).Client(details.server, createValidNick(steam.users[user].playerName) + details.suffix, {
                                       userName: user.toString(36), realName: 'http://steamcommunity.com/profiles/' + user + ' ' + steam.users[user].playerName
                                     });
-    debugger;
+    steamIRCBots[user].once('registered', function(message) {this.join(details.channel) });
     steamIRCBots[user].on('error', function(err) {
         console.log('IRC error: ', err);
       });
@@ -99,7 +99,6 @@ module.exports = function(details) {
   }
 
   function sendIRCMessage(user, msg) {
-    debugger;
     if (Object.keys(steamIRCBots).indexOf(user) != -1) {
       steamIRCBots[user].say(details.channel, msg);
     }
@@ -125,11 +124,13 @@ module.exports = function(details) {
   });
   
   irc.on('message' + details.channel, function(from, message) {
+    debugger;
     if (!steamUserInBots(from))
       sendMessage('<' + from + '> ' + message);
   });
   
   irc.on('action', function(from, to, message) {
+    debugger;
     if (to == details.channel && !steamUserInBots(from)) {
       sendMessage(from + ' ' + message);
     }
