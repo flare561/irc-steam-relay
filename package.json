@@ -3,6 +3,7 @@
   "version": "0.0.7",
   "dependencies": {
     "irc": "*",
-    "steam": "0.6.x"
+    "steam": "0.6.x",
+    "radix-64": "*"
   }
 }

@@ -1,5 +1,6 @@
 var Steam = require('steam');
 var fs = require('fs');
+var radix64 = require('radix-64')("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789[]")
 
 // if we've saved a server list, use it
 if (fs.existsSync('servers')) {
@@ -82,23 +83,23 @@ module.exports = function(details) {
     }
   }
 
-  function toB36(input) {
+  function toR64(input) {
     var half = Math.floor(input.length/2);
     var firstHalf = input.slice(0,half);
     var secondHalf = input.slice(half);
-    return parseInt(firstHalf).toString(36) + ":" + parseInt(secondHalf).toString(36);
+    return radix64.encodeInt(firstHalf) + "|" + radix64.encodeInt(secondHalf);
   }
 
-  function fromB36(input) {
-    var halves = input.split(':');
-    var firstHalf = parseInt(halves[0],36).toString();
-    var secondHalf = parseInt(halves[1],36).toString();
+  function fromR64(input) {
+    var halves = input.split('|');
+    var firstHalf = radix64.decodeToInt(halves[0]).toString();
+    var secondHalf = radix64.decodeToInt(halves[1]).toString();
     return firstHalf + secondHalf;
   }
 
   function joinUser(user) {
     steamIRCBots[user] = new (require('irc')).Client(details.server, createValidNick(steam.users[user].playerName) + details.suffix, {
-                                      userName: toB36(user), realName: 'http://steamcommunity.com/profiles/' + user + ' ' + steam.users[user].playerName
+                                      userName: toR64(user), realName: 'http://steamcommunity.com/profiles/' + user + ' ' + steam.users[user].playerName
                                     });
     steamIRCBots[user].once('registered', function(message) {this.join(details.channel) });
     steamIRCBots[user].on('error', function(err) {
@@ -155,9 +156,9 @@ module.exports = function(details) {
         console.log('Banning ' + mask[1].toLowerCase() + ' (' + getSteamUserByNick(mask[1]) + ') from chatroom');
         steam.ban(details.chatroom, getSteamUserByNick(mask[1]));
       }
-      else if (Object.keys(steam.users).indexOf(fromB36(mask[2]) != -1) {
-        console.log('Banning ' + steamIRCBots[fromB36(mask[2])].nick + ' (' + fromB36(mask[2]) + ') from chatroom');
-        steam.ban(details.chatroom, fromB36(mask[2]));
+      else if (Object.keys(steam.users).indexOf(fromR64(mask[2])) != -1) {
+        console.log('Banning ' + steamIRCBots[fromR64(mask[2])].nick + ' (' + fromR64(mask[2]) + ') from chatroom');
+        steam.ban(details.chatroom, fromR64(mask[2]));
       }
     }
   });
@@ -171,10 +172,10 @@ module.exports = function(details) {
         steam.unban(details.chatroom, bannedChatters[mask[1].toLowerCase()]);
         delete bannedChatters[mask[1].toLowerCase()];
       }
-      else if (Object.keys(steam.users).indexOf(fromB36(mask[2])) != -1) {
-        key = getKeyByValue(bannedChatters, fromB36(mask[2]));
-        console.log('Unbanning ' + key + ' (' + fromB36(mask[2]) + ') from chatroom');
-        steam.unban(details.chatroom, fromB36(mask[2]));
+      else if (Object.keys(steam.users).indexOf(fromR64(mask[2])) != -1) {
+        key = getKeyByValue(bannedChatters, fromR64(mask[2]));
+        console.log('Unbanning ' + key + ' (' + fromR64(mask[2]) + ') from chatroom');
+        steam.unban(details.chatroom, fromR64(mask[2]));
         delete bannedChatters[key];
       }
     }
