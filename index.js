@@ -202,7 +202,7 @@ module.exports = function(details) {
   irc.on('quit', function(nick, reason) {
     if (!steamUserInBots(nick))
       sendMessage(nick + ' has quit (' + reason + ')');
-    else 
+    else if (!reason.startsWith("Killed"))
       delete steamIRCBots[getSteamUserByNick(nick)];
   });
 
